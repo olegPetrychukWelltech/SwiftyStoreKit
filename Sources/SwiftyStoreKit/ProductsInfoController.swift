@@ -54,7 +54,7 @@ class ProductsInfoController: NSObject {
     @discardableResult
     func retrieveProductsInfo(_ productIds: Set<String>, completion: @escaping (RetrieveResults) -> Void) -> InAppProductRequest {
 
-        if inflightRequests[productIds] == nil {
+        if inflightRequests[productIds]?.request == nil {
             let request = inAppProductRequestBuilder.request(productIds: productIds) { results in
                 
                 if let query = self.inflightRequests[productIds] {
