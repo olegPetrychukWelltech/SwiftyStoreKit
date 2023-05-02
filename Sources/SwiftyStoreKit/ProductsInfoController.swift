@@ -53,15 +53,23 @@ class ProductsInfoController: NSObject {
 
     @discardableResult
     func retrieveProductsInfo(_ productIds: Set<String>, completion: @escaping (RetrieveResults) -> Void) -> InAppProductRequest {
+        if var query = inflightRequests[productIds] {
 
-        if inflightRequests[productIds]?.request == nil {
-            let request = inAppProductRequestBuilder.request(productIds: productIds) { results in
+            query.completionHandlers.append(completion)
+            if query.request.hasCompleted {
+                query.completionHandlers.forEach {
+                    $0(query.request.cachedResults!)
+                }
+            }
+            return query.request
+        } else {
+            let request = inAppProductRequestBuilder.request(productIds: productIds) { [weak self] results in
                 
-                if let query = self.inflightRequests[productIds] {
+                if let query = self?.inflightRequests[productIds] {
                     for completion in query.completionHandlers {
                         completion(results)
                     }
-                    self.inflightRequests[productIds] = nil
+                    self?.inflightRequests[productIds] = nil
                 } else {
                     // should not get here, but if it does it seems reasonable to call the outer completion block
                     completion(results)
@@ -69,22 +77,7 @@ class ProductsInfoController: NSObject {
             }
             inflightRequests[productIds] = InAppProductQuery(request: request, completionHandlers: [completion])
             request.start()
-
             return request
-
-        } else {
-            
-            inflightRequests[productIds]!.completionHandlers.append(completion)
-
-            let query = inflightRequests[productIds]!
-
-            if query.request.hasCompleted {
-                query.completionHandlers.forEach {
-                    $0(query.request.cachedResults!)
-                }
-            }
-
-            return inflightRequests[productIds]!.request
         }
     }
 }
